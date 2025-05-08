@@ -16,12 +16,12 @@ $date_to = isset($_GET['date_to']) ? htmlspecialchars($_GET['date_to'], ENT_QUOT
 // Build query
 $sql = "SELECT o.*, c.name as coffin_name, c.price 
         FROM orders o 
-        JOIN coffin_designs c ON o.coffin_id = c.id 
+        JOIN coffins c ON o.coffin_id = c.id 
         WHERE o.user_id = ?";
 $params = [$_SESSION['user_id']];
 
 if (!empty($status)) {
-    $sql .= " AND o.order_status = ?";
+    $sql .= " AND o.status = ?";
     $params[] = $status;
 }
 
@@ -41,27 +41,48 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $orders = $stmt->fetchAll();
 
+// Helper function to get status color
+function getStatusColor($status) {
+    return match($status) {
+        'pending' => 'warning',
+        'processing' => 'info',
+        'delivered' => 'success',
+        'cancelled' => 'danger',
+        default => 'secondary'
+    };
+}
+
+// Helper function to get payment status color
+function getPaymentStatusColor($status) {
+    return match($status) {
+        'paid' => 'success',
+        'pending' => 'warning',
+        'cancelled' => 'danger',
+        default => 'secondary'
+    };
+}
+
 include '../includes/header.php';
 ?>
 
 <div class="container py-4">
     <div class="row">
         <div class="col-12">
-            <h2 class="mb-4">
-                <i class="fas fa-history"></i> Order History
-            </h2>
-
-            <!-- Filters -->
             <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history"></i> Order History
+                    </h5>
+                </div>
                 <div class="card-body">
-                    <form method="GET" class="row g-3">
+                    <!-- Filters -->
+                    <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-3">
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select">
                                 <option value="">All Status</option>
                                 <option value="pending" <?= $status === 'pending' ? 'selected' : '' ?>>Pending</option>
                                 <option value="processing" <?= $status === 'processing' ? 'selected' : '' ?>>Processing</option>
-                                <option value="shipped" <?= $status === 'shipped' ? 'selected' : '' ?>>Shipped</option>
                                 <option value="delivered" <?= $status === 'delivered' ? 'selected' : '' ?>>Delivered</option>
                                 <option value="cancelled" <?= $status === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
                             </select>
@@ -83,12 +104,8 @@ include '../includes/header.php';
                             </div>
                         </div>
                     </form>
-                </div>
-            </div>
 
-            <!-- Orders Table -->
-            <div class="card">
-                <div class="card-body">
+                    <!-- Orders Table -->
                     <?php if (empty($orders)): ?>
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i> No orders found.
@@ -115,13 +132,13 @@ include '../includes/header.php';
                                             <td><?= htmlspecialchars($order['coffin_name']) ?></td>
                                             <td>₱<?= number_format($order['total_amount'], 2) ?></td>
                                             <td>
-                                                <span class="badge bg-<?= getStatusColor($order['order_status']) ?>">
-                                                    <?= ucfirst($order['order_status']) ?>
+                                                <span class="badge bg-<?= getStatusColor($order['status'] ?? 'pending') ?>">
+                                                    <?= ucfirst($order['status'] ?? 'pending') ?>
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="badge bg-<?= getPaymentStatusColor($order['payment_status']) ?>">
-                                                    <?= ucfirst($order['payment_status']) ?>
+                                                <span class="badge bg-<?= getPaymentStatusColor($order['payment_status'] ?? 'pending') ?>">
+                                                    <?= ucfirst($order['payment_status'] ?? 'pending') ?>
                                                 </span>
                                             </td>
                                             <td>
@@ -143,26 +160,4 @@ include '../includes/header.php';
     </div>
 </div>
 
-<?php
-function getStatusColor($status) {
-    return match($status) {
-        'pending' => 'warning',
-        'processing' => 'info',
-        'shipped' => 'primary',
-        'delivered' => 'success',
-        'cancelled' => 'danger',
-        default => 'secondary'
-    };
-}
-
-function getPaymentStatusColor($status) {
-    return match($status) {
-        'paid' => 'success',
-        'pending' => 'warning',
-        'cancelled' => 'danger',
-        default => 'secondary'
-    };
-}
-
-include '../includes/footer.php';
-?> 
+<?php include '../includes/footer.php'; ?> 

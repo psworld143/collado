@@ -19,7 +19,7 @@ try {
     $total_revenue = $stmt->fetchColumn() ?: 0;
 
     // Total coffins
-    $stmt = $pdo->query("SELECT COUNT(*) FROM coffin_designs");
+    $stmt = $pdo->query("SELECT COUNT(*) FROM coffins");
     $total_coffins = $stmt->fetchColumn();
 
     // Recent orders
@@ -27,7 +27,7 @@ try {
         SELECT o.*, u.name as customer_name, c.name as coffin_name
         FROM orders o
         JOIN users u ON o.user_id = u.id
-        JOIN coffin_designs c ON o.coffin_id = c.id
+        JOIN coffins c ON o.coffin_id = c.id
         ORDER BY o.created_at DESC
         LIMIT 5
     ");
@@ -35,7 +35,7 @@ try {
 
     // Low stock coffins
     $stmt = $pdo->query("
-        SELECT * FROM coffin_designs 
+        SELECT * FROM coffins 
         WHERE in_stock = 0 
         ORDER BY name ASC
     ");

@@ -28,23 +28,32 @@ $stmt->execute([$start_date, $end_date]);
 $sales_data = $stmt->fetchAll();
 
 // Get top selling coffins
-$stmt = $pdo->prepare("
-    SELECT 
-        c.name,
-        COUNT(oi.id) as order_count,
-        SUM(oi.quantity) as total_quantity,
-        SUM(oi.quantity * oi.price) as total_revenue
-    FROM coffins c
-    JOIN order_items oi ON c.id = oi.coffin_id
-    JOIN orders o ON oi.order_id = o.id
-    WHERE o.created_at BETWEEN ? AND ?
-    AND o.payment_status = 'paid'
-    GROUP BY c.id
-    ORDER BY total_revenue DESC
-    LIMIT 10
-");
-$stmt->execute([$start_date, $end_date]);
-$top_coffins = $stmt->fetchAll();
+try {
+    $stmt = $pdo->prepare("
+        SELECT 
+            c.name,
+            COUNT(DISTINCT o.id) as order_count,
+            SUM(oi.quantity) as total_quantity,
+            SUM(oi.quantity * oi.price) as total_revenue
+        FROM coffins c
+        LEFT JOIN order_items oi ON c.id = oi.coffin_id
+        LEFT JOIN orders o ON oi.order_id = o.id
+        WHERE (o.created_at BETWEEN ? AND ? OR o.created_at IS NULL)
+        AND (o.payment_status = 'paid' OR o.payment_status IS NULL)
+        GROUP BY c.id, c.name
+        HAVING order_count > 0
+        ORDER BY total_revenue DESC
+        LIMIT 10
+    ");
+    $stmt->execute([$start_date, $end_date]);
+    $top_coffins = $stmt->fetchAll();
+
+    // Log the results for debugging
+    error_log("Top selling coffins query results: " . print_r($top_coffins, true));
+} catch (PDOException $e) {
+    error_log("Error fetching top selling coffins: " . $e->getMessage());
+    $top_coffins = [];
+}
 
 // Get customer statistics
 $stmt = $pdo->prepare("
@@ -146,28 +155,40 @@ include 'includes/admin_nav.php';
             <h5 class="card-title mb-0">Top Selling Coffins</h5>
         </div>
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Coffin Name</th>
-                            <th>Orders</th>
-                            <th>Quantity Sold</th>
-                            <th>Revenue</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($top_coffins as $coffin): ?>
+            <?php if (empty($top_coffins)): ?>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No sales data available for the selected period.
+                </div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
                             <tr>
-                                <td><?= htmlspecialchars($coffin['name']) ?></td>
-                                <td><?= number_format($coffin['order_count'] ?? 0) ?></td>
-                                <td><?= number_format($coffin['total_quantity'] ?? 0) ?></td>
-                                <td>₱<?= number_format($coffin['total_revenue'] ?? 0, 2) ?></td>
+                                <th>Coffin Name</th>
+                                <th>Orders</th>
+                                <th>Quantity Sold</th>
+                                <th>Revenue</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($top_coffins as $coffin): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($coffin['name']) ?></td>
+                                    <td><?= number_format($coffin['order_count']) ?></td>
+                                    <td><?= number_format($coffin['total_quantity']) ?></td>
+                                    <td>₱<?= number_format($coffin['total_revenue'], 2) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-primary">
+                                <th colspan="3" class="text-end">Total Revenue:</th>
+                                <th>₱<?= number_format(array_sum(array_column($top_coffins, 'total_revenue')), 2) ?></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

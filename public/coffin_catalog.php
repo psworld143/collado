@@ -11,7 +11,7 @@ $min_price = $_GET['min_price'] ?? '';
 $max_price = $_GET['max_price'] ?? '';
 
 // Build query
-$sql = "SELECT * FROM coffin_designs WHERE 1=1";
+$sql = "SELECT * FROM coffins WHERE 1=1";
 $params = [];
 
 if (!empty($search)) {
@@ -157,12 +157,12 @@ $stmt->execute($params);
                     </div>
                     
                     <div class="card-footer bg-transparent border-top-0">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                            <small class="text-muted me-2">
                                 <i class="fas fa-info-circle"></i> Click to view details
                             </small>
-                            <span class="badge bg-<?= $row['in_stock'] ? 'success' : 'danger' ?>">
-                                <?= $row['in_stock'] ? 'In Stock' : 'Out of Stock' ?>
+                            <span class="badge bg-<?= $row['stock_quantity'] > 0 ? 'success' : 'danger' ?>">
+                                <?= $row['stock_quantity'] > 0 ? 'In Stock' : 'Out of Stock' ?>
                             </span>
                         </div>
                     </div>

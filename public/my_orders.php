@@ -7,7 +7,7 @@ $sql = "
     SELECT o.id, d.name, d.price, o.payment_status,
            (SELECT status FROM delivery_status WHERE order_id = o.id ORDER BY updated_at DESC LIMIT 1) AS delivery_status
     FROM orders o
-    JOIN coffin_designs d ON o.coffin_id = d.id
+    JOIN coffins d ON o.coffin_id = d.id
     WHERE o.user_id = ?
 ";
 $stmt = $pdo->prepare($sql);

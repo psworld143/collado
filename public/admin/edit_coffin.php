@@ -20,7 +20,7 @@ if (!$coffin_id) {
 
 // Fetch coffin details
 try {
-    $stmt = $pdo->prepare("SELECT * FROM coffin_designs WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT * FROM coffins WHERE id = ?");
     $stmt->execute([$coffin_id]);
     $coffin = $stmt->fetch();
 
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         try {
             $stmt = $pdo->prepare("
-                UPDATE coffin_designs 
+                UPDATE coffins 
                 SET name = ?, 
                     description = ?, 
                     price = ?, 

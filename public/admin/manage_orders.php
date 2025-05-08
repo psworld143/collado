@@ -8,6 +8,10 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit;
 }
 
+// Add SweetAlert2 CSS and JS
+echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">';
+echo '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>';
+
 // Get filter parameters
 $search = isset($_GET['search']) ? htmlspecialchars($_GET['search'], ENT_QUOTES, 'UTF-8') : '';
 $status = isset($_GET['status']) ? htmlspecialchars($_GET['status'], ENT_QUOTES, 'UTF-8') : '';
@@ -16,8 +20,8 @@ $date_to = isset($_GET['date_to']) ? htmlspecialchars($_GET['date_to'], ENT_QUOT
 
 // Build query
 $sql = "SELECT o.*, 
-               u.name as customer_name, 
-               u.phone as customer_phone,
+               COALESCE(u.name, 'N/A') as customer_name, 
+               COALESCE(u.phone, 'N/A') as customer_phone,
                COUNT(oi.id) as item_count
         FROM orders o
         JOIN users u ON o.user_id = u.id
@@ -138,8 +142,8 @@ include 'includes/admin_nav.php';
                                 <tr>
                                     <td>#<?= $order['id'] ?></td>
                                     <td>
-                                        <?= htmlspecialchars($order['customer_name']) ?><br>
-                                        <small class="text-muted"><?= htmlspecialchars($order['customer_phone']) ?></small>
+                                        <?= htmlspecialchars($order['customer_name'] ?? 'N/A') ?><br>
+                                        <small class="text-muted"><?= htmlspecialchars($order['customer_phone'] ?? 'N/A') ?></small>
                                     </td>
                                     <td><?= number_format($order['item_count']) ?> items</td>
                                     <td>₱<?= number_format($order['total_amount'], 2) ?></td>
@@ -154,169 +158,25 @@ include 'includes/admin_nav.php';
                                         <div class="btn-group">
                                             <button type="button" 
                                                     class="btn btn-sm btn-info" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#viewOrderModal<?= $order['id'] ?>"
+                                                    onclick="viewOrderDetails(<?= $order['id'] ?>)"
                                                     title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             <?php if ($order['payment_status'] === 'pending'): ?>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-success" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#markPaidModal<?= $order['id'] ?>"
+                                                        onclick="updateOrderStatus(<?= $order['id'] ?>, 'paid')"
                                                         title="Mark as Paid">
                                                     <i class="fas fa-check"></i>
                                                 </button>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-danger" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#cancelOrderModal<?= $order['id'] ?>"
+                                                        onclick="updateOrderStatus(<?= $order['id'] ?>, 'cancelled')"
                                                         title="Cancel Order">
                                                     <i class="fas fa-times"></i>
                                                 </button>
                                             <?php endif; ?>
                                         </div>
-
-                                        <!-- View Order Modal -->
-                                        <div class="modal fade" id="viewOrderModal<?= $order['id'] ?>" tabindex="-1">
-                                            <div class="modal-dialog modal-lg">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Order Details #<?= $order['id'] ?></h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <!-- Customer Info -->
-                                                        <div class="row mb-4">
-                                                            <div class="col-md-6">
-                                                                <h6>Customer Information</h6>
-                                                                <p class="mb-1">
-                                                                    <strong>Name:</strong> <?= htmlspecialchars($order['customer_name']) ?>
-                                                                </p>
-                                                                <p class="mb-1">
-                                                                    <strong>Phone:</strong> <?= htmlspecialchars($order['customer_phone']) ?>
-                                                                </p>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <h6>Order Information</h6>
-                                                                <p class="mb-1">
-                                                                    <strong>Date:</strong> <?= date('F d, Y H:i', strtotime($order['created_at'])) ?>
-                                                                </p>
-                                                                <p class="mb-1">
-                                                                    <strong>Status:</strong> 
-                                                                    <span class="badge bg-<?= $order['payment_status'] === 'paid' ? 'success' : 
-                                                                        ($order['payment_status'] === 'cancelled' ? 'danger' : 'warning') ?>">
-                                                                        <?= ucfirst($order['payment_status']) ?>
-                                                                    </span>
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Order Items -->
-                                                        <h6>Order Items</h6>
-                                                        <div class="table-responsive">
-                                                            <table class="table table-sm">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>Item</th>
-                                                                        <th>Price</th>
-                                                                        <th>Quantity</th>
-                                                                        <th>Subtotal</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <?php
-                                                                    $stmt = $pdo->prepare("
-                                                                        SELECT oi.*, c.name as coffin_name
-                                                                        FROM order_items oi
-                                                                        JOIN coffins c ON oi.coffin_id = c.id
-                                                                        WHERE oi.order_id = ?
-                                                                    ");
-                                                                    $stmt->execute([$order['id']]);
-                                                                    $items = $stmt->fetchAll();
-                                                                    foreach ($items as $item):
-                                                                    ?>
-                                                                        <tr>
-                                                                            <td><?= htmlspecialchars($item['coffin_name']) ?></td>
-                                                                            <td>₱<?= number_format($item['price'], 2) ?></td>
-                                                                            <td><?= number_format($item['quantity']) ?></td>
-                                                                            <td>₱<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
-                                                                        </tr>
-                                                                    <?php endforeach; ?>
-                                                                </tbody>
-                                                                <tfoot>
-                                                                    <tr>
-                                                                        <th colspan="3" class="text-end">Total:</th>
-                                                                        <th>₱<?= number_format($order['total_amount'], 2) ?></th>
-                                                                    </tr>
-                                                                </tfoot>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Mark as Paid Modal -->
-                                        <?php if ($order['payment_status'] === 'pending'): ?>
-                                            <div class="modal fade" id="markPaidModal<?= $order['id'] ?>" tabindex="-1">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Confirm Payment</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <p>Are you sure you want to mark this order as paid?</p>
-                                                            <p class="mb-0">
-                                                                <strong>Order #<?= $order['id'] ?></strong><br>
-                                                                <strong>Amount:</strong> ₱<?= number_format($order['total_amount'], 2) ?>
-                                                            </p>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                            <form action="update_order_status.php" method="POST" class="d-inline">
-                                                                <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                                                <input type="hidden" name="status" value="paid">
-                                                                <button type="submit" class="btn btn-success">Mark as Paid</button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <?php endif; ?>
-
-                                        <!-- Cancel Order Modal -->
-                                        <?php if ($order['payment_status'] === 'pending'): ?>
-                                            <div class="modal fade" id="cancelOrderModal<?= $order['id'] ?>" tabindex="-1">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Confirm Cancellation</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <p>Are you sure you want to cancel this order?</p>
-                                                            <p class="mb-0">
-                                                                <strong>Order #<?= $order['id'] ?></strong><br>
-                                                                <strong>Amount:</strong> ₱<?= number_format($order['total_amount'], 2) ?>
-                                                            </p>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                            <form action="update_order_status.php" method="POST" class="d-inline">
-                                                                <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                                                <input type="hidden" name="status" value="cancelled">
-                                                                <button type="submit" class="btn btn-danger">Cancel Order</button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -328,4 +188,246 @@ include 'includes/admin_nav.php';
     </div>
 </div>
 
-<?php include '../../includes/footer.php'; ?> 
+<!-- Single Order Details Modal -->
+<div class="modal fade" id="orderDetailsModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="orderDetailsContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="statusUpdateModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Order Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="statusUpdateContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include '../../includes/footer.php'; ?>
+
+<script>
+function viewOrderDetails(orderId) {
+    // Show loading state
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+    document.getElementById('orderDetailsContent').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading order details...</p>
+        </div>
+    `;
+    modal.show();
+
+    // Fetch order details
+    fetch(`get_order_details.php?id=${orderId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const order = data.order;
+                const items = data.items;
+                
+                // Create HTML content for the order details
+                let itemsHtml = '';
+                items.forEach(item => {
+                    itemsHtml += `
+                        <tr>
+                            <td>${item.coffin_name}</td>
+                            <td>₱${parseFloat(item.price).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                            <td>${parseInt(item.quantity).toLocaleString()}</td>
+                            <td>₱${(parseFloat(item.price) * parseInt(item.quantity)).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                        </tr>
+                    `;
+                });
+
+                // Update modal content
+                document.getElementById('orderDetailsContent').innerHTML = `
+                    <div class="text-start">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <h6 class="border-bottom pb-2">Customer Information</h6>
+                                <p class="mb-1"><strong>Name:</strong> ${order.customer_name}</p>
+                                <p class="mb-1"><strong>Phone:</strong> ${order.customer_phone}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="border-bottom pb-2">Order Information</h6>
+                                <p class="mb-1"><strong>Date:</strong> ${new Date(order.created_at).toLocaleString()}</p>
+                                <p class="mb-1">
+                                    <strong>Status:</strong> 
+                                    <span class="badge bg-${order.payment_status === 'paid' ? 'success' : 
+                                        (order.payment_status === 'cancelled' ? 'danger' : 'warning')}">
+                                        ${order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <h6 class="border-bottom pb-2">Order Items</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Price</th>
+                                        <th>Quantity</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${itemsHtml}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="3" class="text-end">Total:</th>
+                                        <th>₱${parseFloat(order.total_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('orderDetailsContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> Failed to load order details
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('orderDetailsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> Failed to load order details
+                </div>
+            `;
+        });
+}
+
+function updateOrderStatus(orderId, newStatus) {
+    const statusText = newStatus === 'paid' ? 'Mark as Paid' : 'Cancel Order';
+    const statusClass = newStatus === 'paid' ? 'success' : 'danger';
+    
+    // Show confirmation modal
+    const modal = new bootstrap.Modal(document.getElementById('statusUpdateModal'));
+    document.getElementById('statusUpdateContent').innerHTML = `
+        <div class="text-center">
+            <div class="mb-4">
+                <i class="fas fa-question-circle fa-3x text-${statusClass}"></i>
+            </div>
+            <h5>Are you sure you want to ${statusText.toLowerCase()} this order?</h5>
+            <p class="text-muted">This action cannot be undone.</p>
+            <div class="mt-4">
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-${statusClass}" onclick="confirmStatusUpdate(${orderId}, '${newStatus}')">
+                    Yes, ${statusText}
+                </button>
+            </div>
+        </div>
+    `;
+    modal.show();
+}
+
+function confirmStatusUpdate(orderId, newStatus) {
+    // Show loading state
+    document.getElementById('statusUpdateContent').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Updating order status...</p>
+        </div>
+    `;
+
+    // Send update request
+    fetch('update_order_status.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            order_id: orderId,
+            status: newStatus
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            document.getElementById('statusUpdateContent').innerHTML = `
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle fa-3x text-success"></i>
+                    </div>
+                    <h5>Order status updated successfully!</h5>
+                    <p class="text-muted">The page will refresh in a moment...</p>
+                </div>
+            `;
+            
+            // Close modal and refresh page after delay
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal')).hide();
+                window.location.reload();
+            }, 1500);
+        } else {
+            // Show error message
+            document.getElementById('statusUpdateContent').innerHTML = `
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-circle fa-3x text-danger"></i>
+                    </div>
+                    <h5>Failed to update order status</h5>
+                    <p class="text-danger">${data.message || 'An error occurred'}</p>
+                    <button type="button" class="btn btn-secondary mt-3" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('statusUpdateContent').innerHTML = `
+            <div class="text-center">
+                <div class="mb-4">
+                    <i class="fas fa-exclamation-circle fa-3x text-danger"></i>
+                </div>
+                <h5>Failed to update order status</h5>
+                <p class="text-danger">An unexpected error occurred</p>
+                <button type="button" class="btn btn-secondary mt-3" data-bs-dismiss="modal">Close</button>
+            </div>
+        `;
+    });
+}
+</script>
+
+<style>
+#orderDetailsModal .modal-dialog {
+    max-width: 800px;
+}
+#orderDetailsModal .modal-body {
+    padding: 1.5rem;
+}
+#statusUpdateModal .modal-dialog {
+    max-width: 400px;
+}
+</style> 

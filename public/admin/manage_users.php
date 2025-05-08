@@ -130,188 +130,25 @@ include 'includes/admin_nav.php';
                                         <div class="btn-group">
                                             <button type="button" 
                                                     class="btn btn-sm btn-info" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#viewUserModal<?= $user['id'] ?>"
+                                                    onclick="viewUser(<?= $user['id'] ?>)"
                                                     title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             <?php if ($user['role'] !== 'admin'): ?>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-warning" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#editUserModal<?= $user['id'] ?>"
+                                                        onclick="editUser(<?= $user['id'] ?>)"
                                                         title="Edit User">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-danger" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#deleteUserModal<?= $user['id'] ?>"
+                                                        onclick="deleteUser(<?= $user['id'] ?>)"
                                                         title="Delete User">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             <?php endif; ?>
                                         </div>
-
-                                        <!-- View User Modal -->
-                                        <div class="modal fade" id="viewUserModal<?= $user['id'] ?>" tabindex="-1">
-                                            <div class="modal-dialog modal-lg">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">User Details</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <!-- User Info -->
-                                                        <div class="row mb-4">
-                                                            <div class="col-md-6">
-                                                                <h6>Personal Information</h6>
-                                                                <p class="mb-1">
-                                                                    <strong>Name:</strong> <?= htmlspecialchars($user['name'] ?? '') ?>
-                                                                </p>
-                                                                <p class="mb-1">
-                                                                    <strong>Email:</strong> <?= htmlspecialchars($user['email'] ?? '') ?>
-                                                                </p>
-                                                                <p class="mb-1">
-                                                                    <strong>Phone:</strong> <?= htmlspecialchars($user['phone'] ?? '') ?>
-                                                                </p>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <h6>Account Information</h6>
-                                                                <p class="mb-1">
-                                                                    <strong>Role:</strong> 
-                                                                    <span class="badge bg-<?= $user['role'] === 'admin' ? 'danger' : 'primary' ?>">
-                                                                        <?= ucfirst($user['role']) ?>
-                                                                    </span>
-                                                                </p>
-                                                                <p class="mb-1">
-                                                                    <strong>Joined:</strong> <?= date('F d, Y', strtotime($user['created_at'])) ?>
-                                                                </p>
-                                                                <p class="mb-1">
-                                                                    <strong>Last Login:</strong> <?= $user['last_login'] ? date('F d, Y H:i', strtotime($user['last_login'])) : 'Never' ?>
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Order History -->
-                                                        <h6>Order History</h6>
-                                                        <div class="table-responsive">
-                                                            <table class="table table-sm">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>Order ID</th>
-                                                                        <th>Date</th>
-                                                                        <th>Amount</th>
-                                                                        <th>Status</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <?php
-                                                                    $stmt = $pdo->prepare("
-                                                                        SELECT * FROM orders 
-                                                                        WHERE user_id = ? 
-                                                                        ORDER BY created_at DESC
-                                                                    ");
-                                                                    $stmt->execute([$user['id']]);
-                                                                    $orders = $stmt->fetchAll();
-                                                                    foreach ($orders as $order):
-                                                                    ?>
-                                                                        <tr>
-                                                                            <td>#<?= $order['id'] ?></td>
-                                                                            <td><?= date('M d, Y', strtotime($order['created_at'])) ?></td>
-                                                                            <td>₱<?= number_format($order['total_amount'], 2) ?></td>
-                                                                            <td>
-                                                                                <span class="badge bg-<?= $order['payment_status'] === 'paid' ? 'success' : 
-                                                                                    ($order['payment_status'] === 'cancelled' ? 'danger' : 'warning') ?>">
-                                                                                    <?= ucfirst($order['payment_status']) ?>
-                                                                                </span>
-                                                                            </td>
-                                                                        </tr>
-                                                                    <?php endforeach; ?>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Edit User Modal -->
-                                        <?php if ($user['role'] !== 'admin'): ?>
-                                            <div class="modal fade" id="editUserModal<?= $user['id'] ?>" tabindex="-1">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content">
-                                                        <form action="update_user.php" method="POST">
-                                                            <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
-                                                            <div class="modal-header">
-                                                                <h5 class="modal-title">Edit User</h5>
-                                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                <div class="mb-3">
-                                                                    <label class="form-label">Name</label>
-                                                                    <input type="text" name="name" class="form-control" 
-                                                                           value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
-                                                                </div>
-                                                                <div class="mb-3">
-                                                                    <label class="form-label">Email</label>
-                                                                    <input type="email" name="email" class="form-control" 
-                                                                           value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
-                                                                </div>
-                                                                <div class="mb-3">
-                                                                    <label class="form-label">Phone</label>
-                                                                    <input type="tel" name="phone" class="form-control" 
-                                                                           value="<?= htmlspecialchars($user['phone'] ?? '') ?>" required>
-                                                                </div>
-                                                                <div class="mb-3">
-                                                                    <label class="form-label">Role</label>
-                                                                    <select name="role" class="form-select" required>
-                                                                        <option value="user" <?= $user['role'] === 'user' ? 'selected' : '' ?>>User</option>
-                                                                        <option value="admin" <?= $user['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <?php endif; ?>
-
-                                        <!-- Delete User Modal -->
-                                        <?php if ($user['role'] !== 'admin'): ?>
-                                            <div class="modal fade" id="deleteUserModal<?= $user['id'] ?>" tabindex="-1">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Confirm Deletion</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <p>Are you sure you want to delete this user?</p>
-                                                            <p class="mb-0">
-                                                                <strong>Name:</strong> <?= htmlspecialchars($user['name'] ?? '') ?><br>
-                                                                <strong>Email:</strong> <?= htmlspecialchars($user['email'] ?? '') ?><br>
-                                                                <strong>Orders:</strong> <?= number_format($user['order_count']) ?>
-                                                            </p>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                            <form action="delete_user.php" method="POST" class="d-inline">
-                                                                <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
-                                                                <button type="submit" class="btn btn-danger">Delete User</button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -323,4 +160,324 @@ include 'includes/admin_nav.php';
     </div>
 </div>
 
-<?php include '../../includes/footer.php'; ?> 
+<!-- Single User Action Modal -->
+<div class="modal fade" id="userActionModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">User Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="userActionContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include '../../includes/footer.php'; ?>
+
+<script>
+// Function to show loading state
+function showLoading() {
+    document.getElementById('userActionContent').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading user details...</p>
+        </div>
+    `;
+}
+
+// Function to view user details
+function viewUser(userId) {
+    const modal = new bootstrap.Modal(document.getElementById('userActionModal'));
+    showLoading();
+    modal.show();
+
+    // Fetch user details
+    fetch(`get_user_details.php?id=${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const user = data.user;
+                
+                // Different content for admin users
+                if (user.role === 'admin') {
+                    document.getElementById('userActionContent').innerHTML = `
+                        <div class="text-start">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Personal Information</h6>
+                                    <p class="mb-1"><strong>Name:</strong> ${user.name}</p>
+                                    <p class="mb-1"><strong>Email:</strong> ${user.email}</p>
+                                    <p class="mb-1"><strong>Phone:</strong> ${user.phone}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Account Information</h6>
+                                    <p class="mb-1">
+                                        <strong>Role:</strong> 
+                                        <span class="badge bg-danger">Admin</span>
+                                    </p>
+                                    <p class="mb-1"><strong>Joined:</strong> ${new Date(user.created_at).toLocaleDateString()}</p>
+                                    <p class="mb-1"><strong>Last Login:</strong> ${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Regular user view with orders
+                    const orders = data.orders;
+                    
+                    // Create orders HTML
+                    let ordersHtml = '';
+                    orders.forEach(order => {
+                        ordersHtml += `
+                            <tr>
+                                <td>#${order.id}</td>
+                                <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                                <td>₱${parseFloat(order.total_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                                <td>
+                                    <span class="badge bg-${order.payment_status === 'paid' ? 'success' : 
+                                        (order.payment_status === 'cancelled' ? 'danger' : 'warning')}">
+                                        ${order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    // Update modal content for regular users
+                    document.getElementById('userActionContent').innerHTML = `
+                        <div class="text-start">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h6>Personal Information</h6>
+                                    <p class="mb-1"><strong>Name:</strong> ${user.name}</p>
+                                    <p class="mb-1"><strong>Email:</strong> ${user.email}</p>
+                                    <p class="mb-1"><strong>Phone:</strong> ${user.phone}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Account Information</h6>
+                                    <p class="mb-1">
+                                        <strong>Role:</strong> 
+                                        <span class="badge bg-primary">User</span>
+                                    </p>
+                                    <p class="mb-1"><strong>Joined:</strong> ${new Date(user.created_at).toLocaleDateString()}</p>
+                                    <p class="mb-1"><strong>Last Login:</strong> ${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</p>
+                                </div>
+                            </div>
+                            <h6>Order History</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Order ID</th>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${ordersHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-4 text-end">
+                                <button type="button" class="btn btn-warning me-2" onclick="editUser(${user.id})">
+                                    <i class="fas fa-edit"></i> Edit User
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="deleteUser(${user.id})">
+                                    <i class="fas fa-trash"></i> Delete User
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                document.getElementById('userActionContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> Failed to load user details
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('userActionContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> Failed to load user details
+                </div>
+            `;
+        });
+}
+
+// Function to edit user
+function editUser(userId) {
+    const modal = new bootstrap.Modal(document.getElementById('userActionModal'));
+    showLoading();
+    modal.show();
+
+    // Fetch user details
+    fetch(`get_user_details.php?id=${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const user = data.user;
+                
+                // Update modal content
+                document.getElementById('userActionContent').innerHTML = `
+                    <form action="update_user.php" method="POST" id="editUserForm">
+                        <input type="hidden" name="user_id" value="${user.id}">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" name="name" class="form-control" value="${user.name}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" value="${user.email}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" name="phone" class="form-control" value="${user.phone}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <select name="role" class="form-select" required>
+                                <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            </select>
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-secondary me-2" onclick="viewUser(${user.id})">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                `;
+
+                // Add form submit handler
+                document.getElementById('editUserForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    
+                    fetch('update_user.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert(data.message || 'Failed to update user');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Failed to update user');
+                    });
+                });
+            } else {
+                document.getElementById('userActionContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> Failed to load user details
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('userActionContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> Failed to load user details
+                </div>
+            `;
+        });
+}
+
+// Function to delete user
+function deleteUser(userId) {
+    const modal = new bootstrap.Modal(document.getElementById('userActionModal'));
+    showLoading();
+    modal.show();
+
+    // Fetch user details
+    fetch(`get_user_details.php?id=${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const user = data.user;
+                
+                // Update modal content
+                document.getElementById('userActionContent').innerHTML = `
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="fas fa-exclamation-triangle fa-3x text-danger"></i>
+                        </div>
+                        <h5>Are you sure you want to delete this user?</h5>
+                        <div class="text-start mt-4">
+                            <p class="mb-1"><strong>Name:</strong> ${user.name}</p>
+                            <p class="mb-1"><strong>Email:</strong> ${user.email}</p>
+                            <p class="mb-1"><strong>Orders:</strong> ${user.order_count}</p>
+                        </div>
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-secondary me-2" onclick="viewUser(${user.id})">Cancel</button>
+                            <button type="button" class="btn btn-danger" onclick="confirmDelete(${user.id})">
+                                Delete User
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('userActionContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> Failed to load user details
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('userActionContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> Failed to load user details
+                </div>
+            `;
+        });
+}
+
+// Function to confirm user deletion
+function confirmDelete(userId) {
+    const formData = new FormData();
+    formData.append('user_id', userId);
+
+    fetch('delete_user.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.message || 'Failed to delete user');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to delete user');
+    });
+}
+</script>
+
+<style>
+#userActionModal .modal-dialog {
+    max-width: 800px;
+}
+#userActionModal .modal-body {
+    padding: 1.5rem;
+}
+</style> 

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: May 08, 2025 at 06:00 PM
+-- Generation Time: May 08, 2025 at 07:40 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -46,6 +46,7 @@ CREATE TABLE `coffins` (
   `id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
   `description` text DEFAULT NULL,
+  `image` varchar(255) DEFAULT NULL,
   `price` decimal(10,2) NOT NULL,
   `image_url` varchar(255) DEFAULT NULL,
   `stock` int(11) NOT NULL DEFAULT 0,
@@ -60,44 +61,11 @@ CREATE TABLE `coffins` (
 -- Dumping data for table `coffins`
 --
 
-INSERT INTO `coffins` (`id`, `name`, `description`, `price`, `image_url`, `stock`, `created_at`, `updated_at`, `category`, `stock_quantity`, `low_stock_threshold`) VALUES
-(1, 'Standard Wooden Coffin', 'Traditional wooden coffin with elegant finish', 999.99, NULL, 10, '2025-05-07 17:13:49', '2025-05-07 17:13:49', 'wood', 0, 5),
-(2, 'Premium Mahogany Coffin', 'High-quality mahogany coffin with brass handles', 1999.99, NULL, 5, '2025-05-07 17:13:49', '2025-05-07 17:13:49', 'wood', 0, 5),
-(3, 'Eco-Friendly Bamboo Coffin', 'Environmentally friendly bamboo coffin', 799.99, NULL, 15, '2025-05-07 17:13:49', '2025-05-07 17:13:49', 'wood', 0, 5),
-(4, 'Luxury Velvet Coffin', 'Premium velvet-lined coffin with gold accents', 2999.99, NULL, 3, '2025-05-07 17:13:49', '2025-05-07 17:13:49', 'wood', 0, 5),
-(5, 'Simple Pine Coffin', 'Affordable pine coffin with basic finish', 499.99, NULL, 20, '2025-05-07 17:13:49', '2025-05-07 17:13:49', 'wood', 0, 5);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `coffin_designs`
---
-
-CREATE TABLE `coffin_designs` (
-  `id` int(11) NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `description` text DEFAULT NULL,
-  `price` decimal(10,2) NOT NULL,
-  `category` enum('wood','metal','premium') NOT NULL,
-  `image` varchar(255) DEFAULT NULL,
-  `in_stock` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
-  `stock_quantity` int(11) NOT NULL DEFAULT 0,
-  `low_stock_threshold` int(11) NOT NULL DEFAULT 5
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `coffin_designs`
---
-
-INSERT INTO `coffin_designs` (`id`, `name`, `description`, `price`, `category`, `image`, `in_stock`, `created_at`, `updated_at`, `stock_quantity`, `low_stock_threshold`) VALUES
-(1, 'Classic Wooden Coffin', 'Traditional wooden coffin with elegant finish', 15000.00, 'wood', NULL, 1, '2025-05-08 14:00:41', NULL, 0, 5),
-(2, 'Premium Metal Casket', 'High-quality metal casket with polished finish', 25000.00, 'metal', NULL, 1, '2025-05-08 14:00:41', NULL, 0, 5),
-(3, 'Luxury Mahogany Coffin', 'Premium mahogany wood with intricate carvings', 35000.00, 'premium', NULL, 1, '2025-05-08 14:00:41', NULL, 0, 5),
-(4, 'Standard Wooden Coffin', 'Simple and dignified wooden coffin', 12000.00, 'wood', NULL, 1, '2025-05-08 14:00:41', NULL, 0, 5),
-(5, 'Modern Metal Casket', 'Contemporary design metal casket', 20000.00, 'metal', NULL, 1, '2025-05-08 14:00:41', NULL, 0, 5),
-(6, 'Deluxe Premium Coffin', 'Exclusive design with premium materials', 40000.00, 'premium', NULL, 1, '2025-05-08 14:00:41', NULL, 0, 5);
+INSERT INTO `coffins` (`id`, `name`, `description`, `image`, `price`, `image_url`, `stock`, `created_at`, `updated_at`, `category`, `stock_quantity`, `low_stock_threshold`) VALUES
+(2, 'Premium Mahogany Coffin', 'High-quality mahogany coffin with brass handles', NULL, 1999.99, NULL, 5, '2025-05-07 17:13:49', '2025-05-07 17:13:49', 'wood', 0, 5),
+(3, 'Eco-Friendly Bamboo Coffin A', 'Environmentally friendly bamboo coffin', NULL, 799.99, NULL, 15, '2025-05-07 17:13:49', '2025-05-08 16:58:21', 'wood', 9, 5),
+(4, 'Luxury Velvet Coffin', 'Premium velvet-lined coffin with gold accents', NULL, 2999.99, NULL, 3, '2025-05-07 17:13:49', '2025-05-07 17:13:49', 'wood', 0, 5),
+(5, 'Simple Pine Coffin', 'Affordable pine coffin with basic finish', NULL, 499.99, NULL, 20, '2025-05-07 17:13:49', '2025-05-07 17:13:49', 'wood', 0, 5);
 
 -- --------------------------------------------------------
 
@@ -151,6 +119,13 @@ CREATE TABLE `orders` (
   `payment_status` enum('pending','paid','cancelled') NOT NULL DEFAULT 'pending'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `orders`
+--
+
+INSERT INTO `orders` (`id`, `user_id`, `coffin_id`, `order_number`, `quantity`, `total_amount`, `status`, `is_paid`, `delivery_date`, `notes`, `created_at`, `updated_at`, `payment_status`) VALUES
+(1, 3, 3, 'ORD-20250508-1351', 1, 799.99, 'pending', 0, '2025-05-10', 'aaa', '2025-05-08 16:58:21', '2025-05-08 17:08:27', 'paid');
+
 -- --------------------------------------------------------
 
 --
@@ -201,6 +176,30 @@ CREATE TABLE `payments` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `stock_adjustments`
+--
+
+CREATE TABLE `stock_adjustments` (
+  `id` int(11) NOT NULL,
+  `coffin_id` int(11) NOT NULL,
+  `previous_quantity` int(11) NOT NULL,
+  `adjustment` int(11) NOT NULL,
+  `new_quantity` int(11) NOT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_by` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `stock_adjustments`
+--
+
+INSERT INTO `stock_adjustments` (`id`, `coffin_id`, `previous_quantity`, `adjustment`, `new_quantity`, `notes`, `created_at`, `created_by`) VALUES
+(1, 3, 0, 10, 10, 'aaa', '2025-05-08 16:45:34', 4);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -221,9 +220,11 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `created_at`, `updated_at`, `last_login`, `phone`) VALUES
-(3, 'John Doe', 'johndoe@gmail.com', '$2y$10$vGQtyN95wmExCK5hpWa8KOYz0hNQM2ehH4hJsy0TSv7.KjdtBgFgW', 'user', '2025-05-08 14:03:19', '2025-05-08 14:56:46', '2025-05-08 14:56:46', NULL),
-(4, 'Admin User', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2025-05-08 14:36:28', '2025-05-08 15:50:15', '2025-05-08 15:50:15', NULL),
-(7, 'Admin', 'admin@admin.com', 'y//Tw2Xb7aMNcNPO8Knq9bYIq/zgD0sC26CNXuZ6mtuX/q.', 'admin', '2025-05-08 14:39:30', '2025-05-08 14:39:30', NULL, NULL);
+(3, 'John Doe', 'johndoe@gmail.com', '$2y$10$vGQtyN95wmExCK5hpWa8KOYz0hNQM2ehH4hJsy0TSv7.KjdtBgFgW', 'user', '2025-05-08 14:03:19', '2025-05-08 17:30:23', '2025-05-08 17:30:23', NULL),
+(4, 'Admin User', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2025-05-08 14:36:28', '2025-05-08 17:32:58', '2025-05-08 17:32:58', NULL),
+(7, 'Admin', 'admin@admin.com', 'y//Tw2Xb7aMNcNPO8Knq9bYIq/zgD0sC26CNXuZ6mtuX/q.', 'admin', '2025-05-08 14:39:30', '2025-05-08 14:39:30', NULL, NULL),
+(8, 'aaa', 'aaa@sample.com', '$2y$10$pw8Jv8VVjNhSw27vCbfyf.9C/1XD7xohV/Tk8dKh7VKXwJQ3jBH6u', 'user', '2025-05-08 17:37:08', '2025-05-08 17:37:08', NULL, '09123456789'),
+(9, 'rrr', 'rrrr@gmail.com', '$2y$10$3ca06b9AuNDscu2YqGcIlO00fG1MYGbSyOSYetOKa653jbTJGY0HS', 'user', '2025-05-08 17:37:41', '2025-05-08 17:37:41', NULL, '09123456789');
 
 --
 -- Indexes for dumped tables
@@ -243,12 +244,6 @@ ALTER TABLE `coffins`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_price` (`price`),
   ADD KEY `idx_stock` (`stock`);
-
---
--- Indexes for table `coffin_designs`
---
-ALTER TABLE `coffin_designs`
-  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `delivery_status`
@@ -282,7 +277,7 @@ ALTER TABLE `orders`
 ALTER TABLE `order_items`
   ADD PRIMARY KEY (`id`),
   ADD KEY `order_id` (`order_id`),
-  ADD KEY `coffin_id` (`coffin_id`);
+  ADD KEY `order_items_ibfk_2` (`coffin_id`);
 
 --
 -- Indexes for table `password_resets`
@@ -303,6 +298,14 @@ ALTER TABLE `payments`
   ADD KEY `idx_transaction_id` (`transaction_id`),
   ADD KEY `idx_status` (`status`),
   ADD KEY `idx_payment_date` (`payment_date`);
+
+--
+-- Indexes for table `stock_adjustments`
+--
+ALTER TABLE `stock_adjustments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `coffin_id` (`coffin_id`),
+  ADD KEY `created_by` (`created_by`);
 
 --
 -- Indexes for table `users`
@@ -327,13 +330,7 @@ ALTER TABLE `activity_logs`
 -- AUTO_INCREMENT for table `coffins`
 --
 ALTER TABLE `coffins`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT for table `coffin_designs`
---
-ALTER TABLE `coffin_designs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `delivery_status`
@@ -351,7 +348,7 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `order_items`
@@ -372,10 +369,16 @@ ALTER TABLE `payments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `stock_adjustments`
+--
+ALTER TABLE `stock_adjustments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- Constraints for dumped tables
@@ -405,7 +408,7 @@ ALTER TABLE `orders`
 --
 ALTER TABLE `order_items`
   ADD CONSTRAINT `order_items_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `order_items_ibfk_2` FOREIGN KEY (`coffin_id`) REFERENCES `coffin_designs` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `order_items_ibfk_2` FOREIGN KEY (`coffin_id`) REFERENCES `coffins` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `password_resets`
@@ -418,6 +421,13 @@ ALTER TABLE `password_resets`
 --
 ALTER TABLE `payments`
   ADD CONSTRAINT `payments_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `stock_adjustments`
+--
+ALTER TABLE `stock_adjustments`
+  ADD CONSTRAINT `stock_adjustments_ibfk_1` FOREIGN KEY (`coffin_id`) REFERENCES `coffins` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `stock_adjustments_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

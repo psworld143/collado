@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Load all coffin designs
-$designs = $pdo->query("SELECT id, name FROM coffin_designs")->fetchAll();
+$designs = $pdo->query("SELECT id, name FROM coffins")->fetchAll();
 ?>
 
 <h2>Modify Order #<?= $orderId ?></h2>

@@ -44,15 +44,11 @@
                             </a>
                             <ul class="dropdown-menu">
                                 <li>
-                                    <a class="dropdown-item" href="/collado/public/my_orders.php">
+                                    <a class="dropdown-item" href="/collado/public/order_history.php">
                                         <i class="fas fa-list"></i> My Orders
                                     </a>
                                 </li>
-                                <li>
-                                    <a class="dropdown-item" href="/collado/public/order_history.php">
-                                        <i class="fas fa-history"></i> Order History
-                                    </a>
-                                </li>
+                        
                                 <li>
                                     <a class="dropdown-item" href="/collado/public/track_order.php">
                                         <i class="fas fa-truck"></i> Track Order

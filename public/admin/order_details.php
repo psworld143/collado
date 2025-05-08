@@ -30,7 +30,7 @@ try {
                c.price as coffin_price
         FROM orders o
         JOIN users u ON o.user_id = u.id
-        JOIN coffin_designs c ON o.coffin_id = c.id
+        JOIN coffins c ON o.coffin_id = c.id
         WHERE o.id = ?
     ");
     $stmt->execute([$order_id]);
