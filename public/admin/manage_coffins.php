@@ -165,8 +165,8 @@ include 'includes/admin_nav.php';
                                     </td>
                                     <td>₱<?= number_format($coffin['price'], 2) ?></td>
                                     <td>
-                                        <?php if ($coffin['stock'] > 0): ?>
-                                            <span class="badge bg-success">In Stock (<?= $coffin['stock'] ?>)</span>
+                                        <?php if ($coffin['stock_quantity'] > 0): ?>
+                                            <span class="badge bg-success">In Stock (<?= $coffin['stock_quantity'] ?>)</span>
                                         <?php else: ?>
                                             <span class="badge bg-danger">Out of Stock</span>
                                         <?php endif; ?>
