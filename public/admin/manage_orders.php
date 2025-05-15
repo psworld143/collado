@@ -22,10 +22,21 @@ $date_to = isset($_GET['date_to']) ? htmlspecialchars($_GET['date_to'], ENT_QUOT
 $sql = "SELECT o.*, 
                COALESCE(u.name, 'N/A') as customer_name, 
                COALESCE(u.phone, 'N/A') as customer_phone,
-               COUNT(oi.id) as item_count
+               c.name as coffin_name,
+               c.price as coffin_price,
+               o.delivery_status,
+               o.delivery_date,
+               o.created_at,
+               o.payment_status,
+               o.total_amount,
+               o.notes,
+               p.payment_method,
+               p.transaction_id as payment_reference,
+               p.payment_date
         FROM orders o
         JOIN users u ON o.user_id = u.id
-        LEFT JOIN order_items oi ON o.id = oi.order_id
+        JOIN coffins c ON o.coffin_id = c.id
+        LEFT JOIN payments p ON o.id = p.order_id
         WHERE 1=1";
 $params = [];
 
@@ -57,6 +68,24 @@ $sql .= " GROUP BY o.id ORDER BY o.created_at DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $orders = $stmt->fetchAll();
+
+// Add this function before the HTML
+function getDeliveryStatusColor($status) {
+    switch ($status) {
+        case 'pending':
+            return 'warning';
+        case 'processing':
+            return 'info';
+        case 'shipped':
+            return 'primary';
+        case 'delivered':
+            return 'success';
+        case 'cancelled':
+            return 'danger';
+        default:
+            return 'secondary';
+    }
+}
 
 include 'includes/admin_nav.php';
 ?>
@@ -132,7 +161,9 @@ include 'includes/admin_nav.php';
                                 <th>Customer</th>
                                 <th>Items</th>
                                 <th>Amount</th>
-                                <th>Status</th>
+                                <th>Payment Status</th>
+                                <th>Payment Method</th>
+                                <th>Delivery Status</th>
                                 <th>Date</th>
                                 <th>Actions</th>
                             </tr>
@@ -145,12 +176,45 @@ include 'includes/admin_nav.php';
                                         <?= htmlspecialchars($order['customer_name'] ?? 'N/A') ?><br>
                                         <small class="text-muted"><?= htmlspecialchars($order['customer_phone'] ?? 'N/A') ?></small>
                                     </td>
-                                    <td><?= number_format($order['item_count']) ?> items</td>
+                                    <td>
+                                        <?= htmlspecialchars($order['coffin_name']) ?><br>
+                                        <small class="text-muted">₱<?= number_format($order['coffin_price'], 2) ?></small>
+                                    </td>
                                     <td>₱<?= number_format($order['total_amount'], 2) ?></td>
                                     <td>
-                                        <span class="badge bg-<?= $order['payment_status'] === 'paid' ? 'success' : 
-                                            ($order['payment_status'] === 'cancelled' ? 'danger' : 'warning') ?>">
-                                            <?= ucfirst($order['payment_status']) ?>
+                                        <div class="d-flex flex-column">
+                                            <span class="badge bg-<?= $order['payment_status'] === 'paid' ? 'success' : 
+                                                ($order['payment_status'] === 'cancelled' ? 'danger' : 'warning') ?> mb-1">
+                                                <?= ucfirst($order['payment_status']) ?>
+                                            </span>
+                                            <?php if ($order['payment_status'] === 'paid'): ?>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar-alt me-1"></i>
+                                                    <?= date('M d, Y', strtotime($order['payment_date'])) ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <?php if ($order['payment_status'] === 'paid'): ?>
+                                            <div class="d-flex flex-column">
+                                                <span class="badge bg-info mb-1">
+                                                    <i class="fas fa-<?= $order['payment_method'] === 'bank' ? 'university' : 'mobile-alt' ?> me-1"></i>
+                                                    <?= ucfirst($order['payment_method'] ?? 'N/A') ?>
+                                                </span>
+                                                <?php if ($order['payment_reference']): ?>
+                                                    <small class="text-monospace bg-light px-2 py-1 rounded">
+                                                        <?= htmlspecialchars($order['payment_reference']) ?>
+                                                    </small>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-<?= getDeliveryStatusColor($order['delivery_status'] ?? 'pending') ?>">
+                                            <?= ucfirst($order['delivery_status'] ?? 'pending') ?>
                                         </span>
                                     </td>
                                     <td><?= date('M d, Y H:i', strtotime($order['created_at'])) ?></td>
@@ -165,15 +229,23 @@ include 'includes/admin_nav.php';
                                             <?php if ($order['payment_status'] === 'pending'): ?>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-success" 
-                                                        onclick="updateOrderStatus(<?= $order['id'] ?>, 'paid')"
-                                                        title="Mark as Paid">
+                                                        onclick="verifyPayment(<?= $order['id'] ?>, <?= $order['payment_id'] ?? 'null' ?>)"
+                                                        title="Verify Payment">
                                                     <i class="fas fa-check"></i>
                                                 </button>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-danger" 
-                                                        onclick="updateOrderStatus(<?= $order['id'] ?>, 'cancelled')"
-                                                        title="Cancel Order">
+                                                        onclick="rejectPayment(<?= $order['id'] ?>, <?= $order['payment_id'] ?? 'null' ?>)"
+                                                        title="Reject Payment">
                                                     <i class="fas fa-times"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if ($order['payment_status'] === 'paid'): ?>
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-primary" 
+                                                        onclick="updateDeliveryStatus(<?= $order['id'] ?>)"
+                                                        title="Update Delivery Status">
+                                                    <i class="fas fa-truck"></i>
                                                 </button>
                                             <?php endif; ?>
                                         </div>
@@ -236,186 +308,282 @@ function viewOrderDetails(orderId) {
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-2">Loading order details...</p>
         </div>
     `;
     modal.show();
 
     // Fetch order details
     fetch(`get_order_details.php?id=${orderId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const order = data.order;
-                const items = data.items;
-                
-                // Create HTML content for the order details
-                let itemsHtml = '';
-                items.forEach(item => {
-                    itemsHtml += `
-                        <tr>
-                            <td>${item.coffin_name}</td>
-                            <td>₱${parseFloat(item.price).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                            <td>${parseInt(item.quantity).toLocaleString()}</td>
-                            <td>₱${(parseFloat(item.price) * parseInt(item.quantity)).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                        </tr>
-                    `;
-                });
-
-                // Update modal content
-                document.getElementById('orderDetailsContent').innerHTML = `
-                    <div class="text-start">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <h6 class="border-bottom pb-2">Customer Information</h6>
-                                <p class="mb-1"><strong>Name:</strong> ${order.customer_name}</p>
-                                <p class="mb-1"><strong>Phone:</strong> ${order.customer_phone}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="border-bottom pb-2">Order Information</h6>
-                                <p class="mb-1"><strong>Date:</strong> ${new Date(order.created_at).toLocaleString()}</p>
-                                <p class="mb-1">
-                                    <strong>Status:</strong> 
-                                    <span class="badge bg-${order.payment_status === 'paid' ? 'success' : 
-                                        (order.payment_status === 'cancelled' ? 'danger' : 'warning')}">
-                                        ${order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                        <h6 class="border-bottom pb-2">Order Items</h6>
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Item</th>
-                                        <th>Price</th>
-                                        <th>Quantity</th>
-                                        <th>Subtotal</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${itemsHtml}
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <th colspan="3" class="text-end">Total:</th>
-                                        <th>₱${parseFloat(order.total_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</th>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                `;
-            } else {
-                document.getElementById('orderDetailsContent').innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle"></i> Failed to load order details
-                    </div>
-                `;
-            }
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('orderDetailsContent').innerHTML = html;
         })
         .catch(error => {
             console.error('Error:', error);
             document.getElementById('orderDetailsContent').innerHTML = `
                 <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i> Failed to load order details
+                    Error loading order details. Please try again.
                 </div>
             `;
         });
 }
 
-function updateOrderStatus(orderId, newStatus) {
-    const statusText = newStatus === 'paid' ? 'Mark as Paid' : 'Cancel Order';
-    const statusClass = newStatus === 'paid' ? 'success' : 'danger';
-    
-    // Show confirmation modal
+function updateOrderStatus(orderId, status) {
+    Swal.fire({
+        title: 'Update Order Status',
+        text: `Are you sure you want to mark this order as ${status}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, update it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('order_id', orderId);
+            formData.append('status', status);
+
+            fetch('update_order_status.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Updated!',
+                        text: 'Order status has been updated.',
+                        icon: 'success'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: data.message || 'Failed to update order status.',
+                        icon: 'error'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while updating the order status.',
+                    icon: 'error'
+                });
+            });
+        }
+    });
+}
+
+function updateDeliveryStatus(orderId) {
     const modal = new bootstrap.Modal(document.getElementById('statusUpdateModal'));
     document.getElementById('statusUpdateContent').innerHTML = `
-        <div class="text-center">
-            <div class="mb-4">
-                <i class="fas fa-question-circle fa-3x text-${statusClass}"></i>
+        <form id="deliveryStatusForm" onsubmit="submitDeliveryStatus(event, ${orderId})">
+            <div class="mb-3">
+                <label class="form-label">Delivery Status</label>
+                <select name="delivery_status" class="form-select" required>
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
             </div>
-            <h5>Are you sure you want to ${statusText.toLowerCase()} this order?</h5>
-            <p class="text-muted">This action cannot be undone.</p>
-            <div class="mt-4">
-                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-${statusClass}" onclick="confirmStatusUpdate(${orderId}, '${newStatus}')">
-                    Yes, ${statusText}
-                </button>
+            <div class="mb-3">
+                <label class="form-label">Delivery Date</label>
+                <input type="date" name="delivery_date" class="form-control" required>
             </div>
-        </div>
+            <div class="mb-3">
+                <label class="form-label">Notes</label>
+                <textarea name="notes" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="text-end">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Status</button>
+            </div>
+        </form>
     `;
     modal.show();
 }
 
-function confirmStatusUpdate(orderId, newStatus) {
-    // Show loading state
-    document.getElementById('statusUpdateContent').innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Updating order status...</p>
-        </div>
-    `;
+function submitDeliveryStatus(event, orderId) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    formData.append('order_id', orderId);
 
-    // Send update request
-    fetch('update_order_status.php', {
+    fetch('update_delivery_status.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            order_id: orderId,
-            status: newStatus
-        })
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Show success message
-            document.getElementById('statusUpdateContent').innerHTML = `
-                <div class="text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-check-circle fa-3x text-success"></i>
-                    </div>
-                    <h5>Order status updated successfully!</h5>
-                    <p class="text-muted">The page will refresh in a moment...</p>
-                </div>
-            `;
-            
-            // Close modal and refresh page after delay
-            setTimeout(() => {
-                bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal')).hide();
-                window.location.reload();
-            }, 1500);
+            Swal.fire({
+                title: 'Updated!',
+                text: 'Delivery status has been updated.',
+                icon: 'success'
+            }).then(() => {
+                location.reload();
+            });
         } else {
-            // Show error message
-            document.getElementById('statusUpdateContent').innerHTML = `
-                <div class="text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-exclamation-circle fa-3x text-danger"></i>
-                    </div>
-                    <h5>Failed to update order status</h5>
-                    <p class="text-danger">${data.message || 'An error occurred'}</p>
-                    <button type="button" class="btn btn-secondary mt-3" data-bs-dismiss="modal">Close</button>
-                </div>
-            `;
+            Swal.fire({
+                title: 'Error!',
+                text: data.message || 'Failed to update delivery status.',
+                icon: 'error'
+            });
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        document.getElementById('statusUpdateContent').innerHTML = `
-            <div class="text-center">
-                <div class="mb-4">
-                    <i class="fas fa-exclamation-circle fa-3x text-danger"></i>
+        Swal.fire({
+            title: 'Error!',
+            text: 'An error occurred while updating the delivery status.',
+            icon: 'error'
+        });
+    });
+}
+
+function verifyPayment(orderId, paymentId) {
+    if (!paymentId) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Payment record not found'
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: 'Verify Payment',
+        text: 'Are you sure you want to verify this payment?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, verify payment',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('order_id', orderId);
+            formData.append('payment_id', paymentId);
+            formData.append('action', 'verify');
+
+            fetch('verify_payment.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Payment Verified',
+                        text: 'The payment has been successfully verified.',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Verification Failed',
+                        text: data.message || 'Failed to verify payment. Please try again.'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while verifying the payment.'
+                });
+            });
+        }
+    });
+}
+
+function rejectPayment(orderId, paymentId) {
+    if (!paymentId) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Payment record not found'
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: 'Reject Payment',
+        html: `
+            <form id="rejectForm">
+                <div class="mb-3">
+                    <label class="form-label">Rejection Reason</label>
+                    <textarea class="form-control" id="rejectionReason" rows="3" required
+                              placeholder="Please provide a reason for rejecting this payment"></textarea>
                 </div>
-                <h5>Failed to update order status</h5>
-                <p class="text-danger">An unexpected error occurred</p>
-                <button type="button" class="btn btn-secondary mt-3" data-bs-dismiss="modal">Close</button>
-            </div>
-        `;
+            </form>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Reject Payment',
+        cancelButtonText: 'Cancel',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            const reason = document.getElementById('rejectionReason').value;
+            if (!reason.trim()) {
+                Swal.showValidationMessage('Please provide a rejection reason');
+                return false;
+            }
+            return reason;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('order_id', orderId);
+            formData.append('payment_id', paymentId);
+            formData.append('action', 'reject');
+            formData.append('rejection_reason', result.value);
+
+            fetch('verify_payment.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Payment Rejected',
+                        text: 'The payment has been successfully rejected.',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Rejection Failed',
+                        text: data.message || 'Failed to reject payment. Please try again.'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while rejecting the payment.'
+                });
+            });
+        }
     });
 }
 </script>
@@ -430,4 +598,7 @@ function confirmStatusUpdate(orderId, newStatus) {
 #statusUpdateModal .modal-dialog {
     max-width: 400px;
 }
-</style> 
+</style>
+<?php
+// Close the PHP tag
+?> 

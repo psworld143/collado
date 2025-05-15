@@ -126,12 +126,12 @@ include '../includes/header.php';
                                 </thead>
                                 <tbody>
                                     <?php foreach ($orders as $order): ?>
-                                        <tr>
+                                        <tr data-order-id="<?= $order['id'] ?>">
                                             <td>#<?= $order['id'] ?></td>
                                             <td><?= date('M d, Y', strtotime($order['created_at'])) ?></td>
                                             <td><?= htmlspecialchars($order['coffin_name']) ?></td>
                                             <td>₱<?= number_format($order['total_amount'], 2) ?></td>
-                                            <td>
+                                            <td class="order-status">
                                                 <span class="badge bg-<?= getStatusColor($order['status'] ?? 'pending') ?>">
                                                     <?= ucfirst($order['status'] ?? 'pending') ?>
                                                 </span>
@@ -160,4 +160,53 @@ include '../includes/header.php';
     </div>
 </div>
 
-<?php include '../includes/footer.php'; ?> 
+<?php include '../includes/footer.php'; ?>
+
+<script>
+// Function to update order status
+function updateOrderStatus(orderId, status) {
+    const statusCell = document.querySelector(`tr[data-order-id="${orderId}"] .order-status`);
+    if (statusCell) {
+        statusCell.textContent = status;
+        statusCell.className = `order-status badge ${getStatusBadgeClass(status)}`;
+    }
+}
+
+// Function to get badge class based on status
+function getStatusBadgeClass(status) {
+    switch(status.toLowerCase()) {
+        case 'pending':
+            return 'bg-warning';
+        case 'processing':
+            return 'bg-info';
+        case 'completed':
+            return 'bg-success';
+        case 'cancelled':
+            return 'bg-danger';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+// Function to check for status updates
+function checkStatusUpdates() {
+    fetch('get_order_statuses.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                data.orders.forEach(order => {
+                    updateOrderStatus(order.id, order.status);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error checking status updates:', error);
+        });
+}
+
+// Check for status updates every 30 seconds
+setInterval(checkStatusUpdates, 30000);
+
+// Initial status check
+document.addEventListener('DOMContentLoaded', checkStatusUpdates);
+</script> 

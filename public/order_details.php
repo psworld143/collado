@@ -92,6 +92,14 @@ include '../includes/header.php';
                                         </td>
                                     </tr>
                                     <tr>
+                                        <th>Delivery Status:</th>
+                                        <td>
+                                            <span class="badge bg-<?= getDeliveryStatusColor($order['delivery_status'] ?? 'pending') ?>">
+                                                <?= ucfirst($order['delivery_status'] ?? 'pending') ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
                                         <th>Delivery Date:</th>
                                         <td><?= date('F d, Y', strtotime($order['delivery_date'])) ?></td>
                                     </tr>
@@ -126,7 +134,7 @@ include '../includes/header.php';
                             <div class="row">
                                 <div class="col-md-3">
                                     <?php if (!empty($order['coffin_image'])): ?>
-                                        <img src="<?= htmlspecialchars($order['coffin_image']) ?>" 
+                                        <img src="../<?= htmlspecialchars($order['coffin_image']) ?>" 
                                              class="img-fluid rounded" 
                                              alt="<?= htmlspecialchars($order['coffin_name']) ?>">
                                     <?php else: ?>
@@ -191,6 +199,18 @@ function getPaymentStatusColor($status) {
     return match($status) {
         'paid' => 'success',
         'pending' => 'warning',
+        'cancelled' => 'danger',
+        default => 'secondary'
+    };
+}
+
+// Helper function to get delivery status color
+function getDeliveryStatusColor($status) {
+    return match($status) {
+        'pending' => 'warning',
+        'processing' => 'info',
+        'shipped' => 'primary',
+        'delivered' => 'success',
         'cancelled' => 'danger',
         default => 'secondary'
     };

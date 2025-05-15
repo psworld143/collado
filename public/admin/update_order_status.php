@@ -6,42 +6,29 @@ ini_set('display_errors', 0);
 require_once '../../config/db.php';
 session_start();
 
-// Set JSON header
-header('Content-Type: application/json');
-
-// Function to send JSON response
-function sendJsonResponse($success, $message) {
-    echo json_encode([
-        'success' => $success,
-        'message' => $message
-    ]);
+// Check if user is logged in and is admin
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
     exit;
 }
 
-// Check if user is logged in and is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    sendJsonResponse(false, 'Unauthorized access');
+// Check if required parameters are present
+if (!isset($_POST['order_id']) || !isset($_POST['status'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
+    exit;
 }
 
-// Get JSON data from request
-$input = file_get_contents('php://input');
-$data = json_decode($input, true);
+$order_id = filter_input(INPUT_POST, 'order_id', FILTER_VALIDATE_INT);
+$status = htmlspecialchars($_POST['status'], ENT_QUOTES, 'UTF-8');
 
-// Validate JSON data
-if (json_last_error() !== JSON_ERROR_NONE) {
-    sendJsonResponse(false, 'Invalid JSON data');
-}
-
-// Validate input
-if (!isset($data['order_id']) || !isset($data['status'])) {
-    sendJsonResponse(false, 'Missing required parameters');
-}
-
-$order_id = filter_var($data['order_id'], FILTER_VALIDATE_INT);
-$status = filter_var($data['status'], FILTER_SANITIZE_STRING);
-
-if (!$order_id || !in_array($status, ['paid', 'cancelled'])) {
-    sendJsonResponse(false, 'Invalid parameters');
+// Validate status
+$valid_statuses = ['pending', 'paid', 'cancelled'];
+if (!in_array($status, $valid_statuses)) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Invalid status']);
+    exit;
 }
 
 try {
@@ -51,28 +38,41 @@ try {
     // Update order status
     $stmt = $pdo->prepare("
         UPDATE orders 
-        SET payment_status = ?, 
-            updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ? AND payment_status = 'pending'
+        SET payment_status = ?,
+            updated_at = NOW()
+        WHERE id = ?
     ");
+    
     $stmt->execute([$status, $order_id]);
 
-    if ($stmt->rowCount() === 0) {
-        throw new Exception('Order not found or status cannot be updated');
+    // If order is cancelled, restore stock quantity
+    if ($status === 'cancelled') {
+        $stmt = $pdo->prepare("
+            UPDATE coffins c
+            JOIN orders o ON c.id = o.coffin_id
+            SET c.stock_quantity = c.stock_quantity + o.quantity
+            WHERE o.id = ?
+        ");
+        $stmt->execute([$order_id]);
     }
 
     // Commit transaction
     $pdo->commit();
 
-    // Return success response
-    sendJsonResponse(true, 'Order status updated successfully');
-
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'message' => 'Order status updated successfully']);
+} catch (PDOException $e) {
+    // Rollback transaction on error
+    $pdo->rollBack();
+    
+    error_log("Order Status Update Error: " . $e->getMessage());
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 } catch (Exception $e) {
     // Rollback transaction on error
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
+    $pdo->rollBack();
     
-    error_log("Error updating order status: " . $e->getMessage());
-    sendJsonResponse(false, 'Failed to update order status');
+    error_log("Order Status Update Error: " . $e->getMessage());
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'An unexpected error occurred']);
 } 
