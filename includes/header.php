@@ -65,7 +65,7 @@
                         <!-- User Account -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-user-circle"></i> <?= htmlspecialchars($_SESSION['username']) ?>
+                                <i class="fas fa-user-circle"></i> <?= isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'User' ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>

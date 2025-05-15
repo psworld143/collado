@@ -24,7 +24,7 @@ try {
 
     // Recent orders
     $stmt = $pdo->query("
-        SELECT o.*, u.name as customer_name, c.name as coffin_name
+        SELECT o.*, u.name as customer_name, c.name as coffin_name, o.status as order_status
         FROM orders o
         JOIN users u ON o.user_id = u.id
         JOIN coffins c ON o.coffin_id = c.id
@@ -152,8 +152,8 @@ include 'includes/admin_nav.php';
                                             <td><?= htmlspecialchars($order['coffin_name']) ?></td>
                                             <td>₱<?= number_format($order['total_amount'], 2) ?></td>
                                             <td>
-                                                <span class="badge bg-<?= getStatusColor($order['order_status']) ?>">
-                                                    <?= ucfirst($order['order_status']) ?>
+                                                <span class="badge bg-<?= getStatusColor($order['order_status'] ?? 'pending') ?>">
+                                                    <?= ucfirst($order['order_status'] ?? 'pending') ?>
                                                 </span>
                                             </td>
                                             <td><?= date('M d, Y', strtotime($order['created_at'])) ?></td>
@@ -218,5 +218,5 @@ function getStatusColor($status) {
     };
 }
 
-include '../includes/footer.php';
+include '../../includes/footer.php';
 ?> 

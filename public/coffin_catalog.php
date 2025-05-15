@@ -128,7 +128,7 @@ $stmt->execute($params);
             <div class="col-md-4 mb-4">
                 <div class="card h-100 shadow-sm hover-shadow">
                     <?php if (!empty($row['image'])): ?>
-                        <img src="<?= htmlspecialchars($row['image']) ?>" 
+                        <img src="../<?= htmlspecialchars($row['image']) ?>" 
                              class="card-img-top" 
                              alt="<?= htmlspecialchars($row['name']) ?>"
                              style="height: 200px; object-fit: cover;">
